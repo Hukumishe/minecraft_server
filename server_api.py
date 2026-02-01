@@ -79,6 +79,10 @@ class MinecraftAPIHandler(BaseHTTPRequestHandler):
             self.execute_command()
         elif path == "/api/upload/modpack":
             self.upload_modpack()
+        elif path == "/api/version":
+            self.get_version()
+        elif path == "/api/version/change":
+            self.change_version()
         else:
             self.send_error_response("Not found", 404)
     
@@ -406,6 +410,77 @@ class MinecraftAPIHandler(BaseHTTPRequestHandler):
             })
         except zipfile.BadZipFile:
             self.send_error_response("Некорректный ZIP архив", 400)
+        except Exception as e:
+            self.send_error_response(str(e), 500)
+    
+    def get_version(self):
+        """Получение текущей версии Minecraft"""
+        try:
+            version_file = f"{MINECRAFT_DIR}/.minecraft_version"
+            current_version = "unknown"
+            
+            if os.path.exists(version_file):
+                with open(version_file, 'r') as f:
+                    current_version = f.read().strip()
+            else:
+                # Пытаемся определить из логов
+                current_version = self.get_minecraft_version()
+            
+            # Получаем доступные версии
+            try:
+                version_manifest_url = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+                result = subprocess.run(
+                    ["curl", "-s", version_manifest_url],
+                    capture_output=True,
+                    text=True,
+                    timeout=5
+                )
+                manifest = json.loads(result.stdout)
+                available_versions = [v["id"] for v in manifest["versions"][:20]]  # Последние 20 версий
+                latest_version = manifest["latest"]["release"]
+            except:
+                available_versions = []
+                latest_version = "unknown"
+            
+            self.send_json_response({
+                "current_version": current_version,
+                "latest_version": latest_version,
+                "available_versions": available_versions
+            })
+        except Exception as e:
+            self.send_error_response(str(e), 500)
+    
+    def change_version(self):
+        """Изменение версии Minecraft"""
+        try:
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            data = json.loads(post_data.decode())
+            
+            new_version = data.get('version')
+            if not new_version:
+                self.send_error_response("Версия не указана", 400)
+                return
+            
+            # Сохраняем версию в файл
+            version_file = f"{MINECRAFT_DIR}/.minecraft_version"
+            with open(version_file, 'w') as f:
+                f.write(new_version)
+            
+            # Удаляем старый server.jar, чтобы скачался новый
+            old_jar = f"{MINECRAFT_DIR}/server.jar"
+            if os.path.exists(old_jar):
+                backup_jar = f"{MINECRAFT_DIR}/server.jar.backup"
+                if os.path.exists(backup_jar):
+                    os.remove(backup_jar)
+                shutil.copy2(old_jar, backup_jar)
+                os.remove(old_jar)
+            
+            self.send_json_response({
+                "success": True,
+                "message": f"Версия изменена на {new_version}. Перезапустите сервер для применения изменений.",
+                "version": new_version
+            })
         except Exception as e:
             self.send_error_response(str(e), 500)
 

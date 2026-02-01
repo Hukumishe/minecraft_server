@@ -17,6 +17,16 @@ if [ ! -f server.jar ]; then
         
         echo "Кастомная сборка успешно скачана!"
     else
+        # Проверяем, есть ли сохраненная версия в файле
+        VERSION_FILE="/minecraft/.minecraft_version"
+        if [ -f "$VERSION_FILE" ]; then
+            SAVED_VERSION=$(cat "$VERSION_FILE")
+            if [ ! -z "$SAVED_VERSION" ]; then
+                MINECRAFT_VERSION="$SAVED_VERSION"
+                echo "Используется сохраненная версия: $MINECRAFT_VERSION"
+            fi
+        fi
+        
         echo "Скачивание стандартного Minecraft сервера версии ${MINECRAFT_VERSION}..."
         
         # Получаем URL для скачивания сервера
