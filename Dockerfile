@@ -1,5 +1,6 @@
 # Используем официальный образ Java для Minecraft сервера
-FROM eclipse-temurin:17-jre-alpine
+# Java 21 требуется для современных версий Minecraft
+FROM eclipse-temurin:21-jre-alpine
 
 # Устанавливаем необходимые пакеты
 RUN apk add --no-cache curl bash jq
