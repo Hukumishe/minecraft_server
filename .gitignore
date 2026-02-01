@@ -1,0 +1,23 @@
+# Minecraft server files
+server.jar
+world/
+logs/
+*.log
+*.log.gz
+usercache.json
+banned-players.json
+banned-ips.json
+ops.json
+whitelist.json
+crash-reports/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
