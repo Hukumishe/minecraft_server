@@ -3,7 +3,7 @@
 FROM eclipse-temurin:21-jre-alpine
 
 # Устанавливаем необходимые пакеты
-RUN apk add --no-cache curl bash jq
+RUN apk add --no-cache curl bash jq python3 py3-pip
 
 # Создаем рабочую директорию
 WORKDIR /minecraft
@@ -20,14 +20,15 @@ ENV MAX_BACKUPS=10
 # Копируем скрипты
 COPY start.sh /minecraft/start.sh
 COPY autosave.sh /minecraft/autosave.sh
-RUN chmod +x /minecraft/start.sh /minecraft/autosave.sh
+COPY server_api.py /minecraft/server_api.py
+RUN chmod +x /minecraft/start.sh /minecraft/autosave.sh /minecraft/server_api.py
 
 # Копируем файлы конфигурации
 COPY server.properties /minecraft/server.properties
 COPY eula.txt /minecraft/eula.txt
 
-# Открываем порт Minecraft
-EXPOSE 25565
+# Открываем порты
+EXPOSE 25565 8080
 
 # Запускаем скрипт
 CMD ["/minecraft/start.sh"]

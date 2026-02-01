@@ -86,6 +86,11 @@ cleanup() {
 # Устанавливаем обработчик сигналов
 trap cleanup SIGTERM SIGINT
 
+# Запускаем API сервер в фоне
+echo "Запуск API сервера на порту 8080..."
+python3 /minecraft/server_api.py &
+API_PID=$!
+
 # Запускаем автосохранение в фоне (если включено)
 if [ "$AUTO_SAVE_ENABLED" = "true" ]; then
     echo "Запуск автосохранения (интервал: ${AUTO_SAVE_INTERVAL} минут)..."
@@ -105,6 +110,11 @@ EXIT_CODE=$?
 # Останавливаем автосохранение
 if [ ! -z "$AUTO_SAVE_PID" ]; then
     kill $AUTO_SAVE_PID 2>/dev/null
+fi
+
+# Останавливаем API сервер
+if [ ! -z "$API_PID" ]; then
+    kill $API_PID 2>/dev/null
 fi
 
 # Финальное сохранение
