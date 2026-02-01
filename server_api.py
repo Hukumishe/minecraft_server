@@ -306,29 +306,106 @@ class MinecraftAPIHandler(BaseHTTPRequestHandler):
             self.send_error_response(str(e), 500)
     
     def upload_modpack(self):
-        """Загрузка модпака"""
+        """Загрузка и установка модпака (ZIP архив)"""
         try:
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            data = json.loads(post_data.decode())
+            import cgi
+            import zipfile
+            import tempfile
             
-            # В реальности здесь будет обработка multipart/form-data
-            # Для простоты принимаем URL файла
-            file_url = data.get('file_url')
-            if not file_url:
-                self.send_error_response("URL файла не указан", 400)
+            # Парсим multipart/form-data
+            content_type = self.headers.get('Content-Type', '')
+            if not content_type.startswith('multipart/form-data'):
+                self.send_error_response("Требуется multipart/form-data", 400)
                 return
             
-            # Сохраняем URL в переменную окружения или файл
-            modpack_url_file = f"{MINECRAFT_DIR}/modpack_url.txt"
-            with open(modpack_url_file, 'w') as f:
-                f.write(file_url)
+            # Читаем данные
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            # Парсим multipart данные
+            form = cgi.FieldStorage(
+                fp=tempfile.BytesIO(post_data),
+                headers=self.headers,
+                environ={'REQUEST_METHOD': 'POST'}
+            )
+            
+            if 'modpack' not in form:
+                self.send_error_response("Файл модпака не найден", 400)
+                return
+            
+            file_item = form['modpack']
+            if not file_item.filename.endswith('.zip'):
+                self.send_error_response("Требуется ZIP архив", 400)
+                return
+            
+            # Сохраняем временный файл
+            temp_zip = tempfile.NamedTemporaryFile(delete=False, suffix='.zip')
+            file_item.file.seek(0)
+            temp_zip.write(file_item.file.read())
+            temp_zip.close()
+            
+            # Распаковываем ZIP
+            modpack_dir = f"{MINECRAFT_DIR}/modpack"
+            if os.path.exists(modpack_dir):
+                shutil.rmtree(modpack_dir)
+            os.makedirs(modpack_dir, exist_ok=True)
+            
+            with zipfile.ZipFile(temp_zip.name, 'r') as zip_ref:
+                zip_ref.extractall(modpack_dir)
+            
+            # Ищем server.jar в распакованном архиве
+            server_jar = None
+            for root, dirs, files in os.walk(modpack_dir):
+                if 'server.jar' in files:
+                    server_jar = os.path.join(root, 'server.jar')
+                    break
+            
+            if not server_jar:
+                # Если server.jar не найден, ищем любой .jar файл
+                for root, dirs, files in os.walk(modpack_dir):
+                    for file in files:
+                        if file.endswith('.jar'):
+                            server_jar = os.path.join(root, file)
+                            break
+                    if server_jar:
+                        break
+            
+            if not server_jar:
+                shutil.rmtree(modpack_dir)
+                os.unlink(temp_zip.name)
+                self.send_error_response("server.jar не найден в архиве", 400)
+                return
+            
+            # Копируем server.jar в основную директорию
+            target_jar = f"{MINECRAFT_DIR}/server.jar"
+            if os.path.exists(target_jar):
+                # Делаем бэкап старого сервера
+                backup_jar = f"{MINECRAFT_DIR}/server.jar.backup"
+                shutil.copy2(target_jar, backup_jar)
+            
+            shutil.copy2(server_jar, target_jar)
+            
+            # Копируем остальные файлы из модпака (моды, конфиги и т.д.)
+            for root, dirs, files in os.walk(modpack_dir):
+                for file in files:
+                    if file != 'server.jar' and not file.endswith('.jar'):
+                        src = os.path.join(root, file)
+                        rel_path = os.path.relpath(src, modpack_dir)
+                        dst = os.path.join(MINECRAFT_DIR, rel_path)
+                        os.makedirs(os.path.dirname(dst), exist_ok=True)
+                        shutil.copy2(src, dst)
+            
+            # Удаляем временные файлы
+            shutil.rmtree(modpack_dir)
+            os.unlink(temp_zip.name)
             
             self.send_json_response({
                 "success": True,
-                "message": "URL модпака сохранен",
-                "url": file_url
+                "message": "Модпак успешно установлен",
+                "server_jar": os.path.basename(server_jar)
             })
+        except zipfile.BadZipFile:
+            self.send_error_response("Некорректный ZIP архив", 400)
         except Exception as e:
             self.send_error_response(str(e), 500)
 
@@ -342,8 +419,6 @@ def run_api_server():
 
 
 if __name__ == "__main__":
-    # Запускаем API сервер в отдельном потоке
-    api_thread = threading.Thread(target=run_api_server, daemon=True)
-    api_thread.start()
-    api_thread.join()
+    # Запускаем API сервер
+    run_api_server()
 

@@ -125,8 +125,9 @@ Body: {
 ### 9. Загрузка модпака
 ```
 POST /api/upload/modpack
+Content-Type: multipart/form-data
 Body: {
-  "file_url": "https://example.com/modpack.jar"
+  "modpack": <ZIP файл>
 }
 ```
 
@@ -134,10 +135,16 @@ Body: {
 ```json
 {
   "success": true,
-  "message": "URL модпака сохранен",
-  "url": "https://example.com/modpack.jar"
+  "message": "Модпак успешно установлен",
+  "server_jar": "server.jar"
 }
 ```
+
+**Важно:** 
+- Принимает только ZIP архивы
+- ZIP должен содержать server.jar
+- Архив распаковывается, server.jar копируется в основную директорию
+- Остальные файлы из архива (моды, конфиги) также копируются
 
 ## Примеры использования в веб-интерфейсе
 
@@ -202,18 +209,59 @@ async function restoreBackup(apiUrl: string, backupName: string) {
 
 ## Работа с модпаками
 
-### Загрузка модпака в Lovable Storage
+### Загрузка модпака
 
 ```typescript
 async function uploadModpack(file: File) {
-  // 1. Загрузить в Lovable Storage
+  // 1. Валидация
+  if (!file.name.endsWith('.zip')) {
+    throw new Error('Требуется ZIP архив');
+  }
+  
+  // 2. Загрузить в Lovable Storage
   const lovableUrl = await uploadToLovableStorage(file, '/modpacks');
   
-  // 2. Сохранить URL на сервере
+  // 3. Сохранить метаданные в БД
+  await db.modpacks.create({
+    name: file.name.replace('.zip', ''),
+    filename: file.name,
+    storage_path: `/modpacks/${file.name}`,
+    public_url: lovableUrl,
+    size: file.size,
+    uploaded_at: new Date(),
+  });
+  
+  // 4. Отправить на сервер для установки
+  const formData = new FormData();
+  formData.append('modpack', file);
+  
   const response = await fetch(`${API_URL}/api/upload/modpack`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ file_url: lovableUrl }),
+    body: formData,
+  });
+  
+  return response.json();
+}
+```
+
+### Активация модпака
+
+```typescript
+async function activateModpack(modpackId: string) {
+  // 1. Получить модпак из Lovable Storage
+  const modpack = await db.modpacks.findByPk(modpackId);
+  
+  // 2. Скачать из Lovable Storage
+  const blob = await downloadFromLovableStorage(modpack.public_url);
+  const file = new File([blob], modpack.filename, { type: 'application/zip' });
+  
+  // 3. Отправить на сервер
+  const formData = new FormData();
+  formData.append('modpack', file);
+  
+  const response = await fetch(`${API_URL}/api/upload/modpack`, {
+    method: 'POST',
+    body: formData,
   });
   
   return response.json();
