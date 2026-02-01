@@ -18,7 +18,8 @@ from urllib.parse import urlparse, parse_qs
 import threading
 
 # Конфигурация
-API_PORT = 8080
+# Используем порт из переменной окружения Railway или 8080 по умолчанию
+API_PORT = int(os.environ.get('API_PORT', os.environ.get('PORT', 8080)))
 MINECRAFT_DIR = "/minecraft"
 WORLD_DIR = f"{MINECRAFT_DIR}/world"
 BACKUP_DIR = f"{MINECRAFT_DIR}/backups"
@@ -490,6 +491,7 @@ def run_api_server():
     server_address = ('', API_PORT)
     httpd = HTTPServer(server_address, MinecraftAPIHandler)
     print(f"API сервер запущен на порту {API_PORT}")
+    print(f"Доступен по адресу: http://0.0.0.0:{API_PORT}/api")
     httpd.serve_forever()
 
 
