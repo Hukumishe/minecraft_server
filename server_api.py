@@ -28,6 +28,10 @@ SERVER_PROPERTIES = f"{MINECRAFT_DIR}/server.properties"
 class MinecraftAPIHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         """Обработка CORS preflight"""
+        # Логируем CORS preflight запросы
+        client_ip = self.client_address[0]
+        self.log_message(f"OPTIONS {self.path} - IP: {client_ip} - CORS preflight")
+        
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
@@ -47,8 +51,22 @@ class MinecraftAPIHandler(BaseHTTPRequestHandler):
         self.send_json_response({"error": message}, status)
     
     def log_message(self, format, *args):
-        """Отключение стандартного логирования"""
-        pass
+        """Логирование запросов к API"""
+        # Логируем в файл и в stdout
+        log_entry = format % args
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        full_log = f"[{timestamp}] {log_entry}\n"
+        
+        # Выводим в stdout (будет видно в логах Railway)
+        print(full_log, end='')
+        
+        # Также сохраняем в файл логов API
+        api_log_file = f"{MINECRAFT_DIR}/api.log"
+        try:
+            with open(api_log_file, 'a', encoding='utf-8') as f:
+                f.write(full_log)
+        except:
+            pass  # Игнорируем ошибки записи в файл
     
     def do_GET(self):
         """Обработка GET запросов"""
@@ -69,6 +87,12 @@ class MinecraftAPIHandler(BaseHTTPRequestHandler):
     
     def do_POST(self):
         """Обработка POST запросов"""
+        # Логируем запрос
+        client_ip = self.client_address[0]
+        user_agent = self.headers.get('User-Agent', 'Unknown')
+        content_length = self.headers.get('Content-Length', '0')
+        self.log_message(f"POST {self.path} - IP: {client_ip} - Size: {content_length} bytes - User-Agent: {user_agent}")
+        
         parsed_path = urlparse(self.path)
         path = parsed_path.path
         
@@ -80,8 +104,6 @@ class MinecraftAPIHandler(BaseHTTPRequestHandler):
             self.execute_command()
         elif path == "/api/upload/modpack":
             self.upload_modpack()
-        elif path == "/api/version":
-            self.get_version()
         elif path == "/api/version/change":
             self.change_version()
         else:
@@ -89,6 +111,11 @@ class MinecraftAPIHandler(BaseHTTPRequestHandler):
     
     def do_DELETE(self):
         """Обработка DELETE запросов"""
+        # Логируем запрос
+        client_ip = self.client_address[0]
+        user_agent = self.headers.get('User-Agent', 'Unknown')
+        self.log_message(f"DELETE {self.path} - IP: {client_ip} - User-Agent: {user_agent}")
+        
         parsed_path = urlparse(self.path)
         path = parsed_path.path
         
