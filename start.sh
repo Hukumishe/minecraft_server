@@ -17,16 +17,6 @@ if [ ! -f server.jar ]; then
         
         echo "Кастомная сборка успешно скачана!"
     else
-        # Проверяем, есть ли сохраненная версия в файле
-        VERSION_FILE="/minecraft/.minecraft_version"
-        if [ -f "$VERSION_FILE" ]; then
-            SAVED_VERSION=$(cat "$VERSION_FILE")
-            if [ ! -z "$SAVED_VERSION" ]; then
-                MINECRAFT_VERSION="$SAVED_VERSION"
-                echo "Используется сохраненная версия: $MINECRAFT_VERSION"
-            fi
-        fi
-        
         echo "Скачивание стандартного Minecraft сервера версии ${MINECRAFT_VERSION}..."
         
         # Получаем URL для скачивания сервера
@@ -72,66 +62,7 @@ if [ ! -z "$PORT" ]; then
     sed -i "s/server-port=.*/server-port=$PORT/" server.properties
 fi
 
-# Функция для обработки сигналов остановки
-cleanup() {
-    echo ""
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Получен сигнал остановки, сохраняем мир..."
-    
-    # Создаем бэкап перед остановкой
-    if [ -d "/minecraft/world" ]; then
-        echo "[$(date +'%Y-%m-%d %H:%M:%S')] Создание бэкапа перед остановкой..."
-        BACKUP_DIR="/minecraft/backups"
-        mkdir -p "$BACKUP_DIR"
-        backup_name="world_$(date +%Y%m%d_%H%M%S).tar.gz"
-        tar -czf "$BACKUP_DIR/$backup_name" -C /minecraft world 2>/dev/null
-        echo "[$(date +'%Y-%m-%d %H:%M:%S')] Бэкап создан: $backup_name"
-    fi
-    
-    # Останавливаем Java процесс
-    kill -TERM $SERVER_PID 2>/dev/null
-    wait $SERVER_PID
-    exit 0
-}
-
-# Устанавливаем обработчик сигналов
-trap cleanup SIGTERM SIGINT
-
-# Запускаем API сервер в фоне
-echo "Запуск API сервера на порту 8080..."
-python3 /minecraft/server_api.py &
-API_PID=$!
-
-# Запускаем автосохранение в фоне (если включено)
-if [ "$AUTO_SAVE_ENABLED" = "true" ]; then
-    echo "Запуск автосохранения (интервал: ${AUTO_SAVE_INTERVAL} минут)..."
-    /minecraft/autosave.sh &
-    AUTO_SAVE_PID=$!
-fi
-
 # Запускаем сервер
 echo "Запуск Minecraft сервера с ${MEMORY} памяти..."
-java -Xmx${MEMORY} -Xms${MEMORY} -jar server.jar nogui &
-SERVER_PID=$!
-
-# Ждем завершения сервера
-wait $SERVER_PID
-EXIT_CODE=$?
-
-# Останавливаем автосохранение
-if [ ! -z "$AUTO_SAVE_PID" ]; then
-    kill $AUTO_SAVE_PID 2>/dev/null
-fi
-
-# Останавливаем API сервер
-if [ ! -z "$API_PID" ]; then
-    kill $API_PID 2>/dev/null
-fi
-
-# Финальное сохранение
-if [ -d "/minecraft/world" ]; then
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Создание финального бэкапа..."
-    /minecraft/autosave.sh
-fi
-
-exit $EXIT_CODE
+java -Xmx${MEMORY} -Xms${MEMORY} -jar server.jar nogui
 
