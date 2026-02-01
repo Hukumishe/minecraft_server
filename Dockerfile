@@ -13,10 +13,14 @@ ENV MEMORY=6G
 ENV MINECRAFT_VERSION=latest
 ENV CUSTOM_SERVER_URL=
 ENV EULA=true
+ENV AUTO_SAVE_ENABLED=true
+ENV AUTO_SAVE_INTERVAL=15
+ENV MAX_BACKUPS=10
 
 # Копируем скрипты
 COPY start.sh /minecraft/start.sh
-RUN chmod +x /minecraft/start.sh
+COPY autosave.sh /minecraft/autosave.sh
+RUN chmod +x /minecraft/start.sh /minecraft/autosave.sh
 
 # Копируем файлы конфигурации
 COPY server.properties /minecraft/server.properties
