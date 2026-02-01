@@ -40,6 +40,13 @@ class MinecraftAPIHandler(BaseHTTPRequestHandler):
     
     def send_json_response(self, data, status=200):
         """Отправка JSON ответа"""
+        # Логируем ответ
+        if status >= 400:
+            error_msg = data.get('error', 'Unknown error') if isinstance(data, dict) else str(data)
+            self.log_message(f"Response: {status} - Error: {error_msg}")
+        else:
+            self.log_message(f"Response: {status} - Success")
+        
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -70,6 +77,11 @@ class MinecraftAPIHandler(BaseHTTPRequestHandler):
     
     def do_GET(self):
         """Обработка GET запросов"""
+        # Логируем запрос
+        client_ip = self.client_address[0]
+        user_agent = self.headers.get('User-Agent', 'Unknown')
+        self.log_message(f"GET {self.path} - IP: {client_ip} - User-Agent: {user_agent}")
+        
         parsed_path = urlparse(self.path)
         path = parsed_path.path
         
