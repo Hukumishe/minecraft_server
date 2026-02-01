@@ -10,6 +10,9 @@ import os
 import subprocess
 import shutil
 import tarfile
+import zipfile
+import tempfile
+import cgi
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 import threading
@@ -308,9 +311,6 @@ class MinecraftAPIHandler(BaseHTTPRequestHandler):
     def upload_modpack(self):
         """Загрузка и установка модпака (ZIP архив)"""
         try:
-            import cgi
-            import zipfile
-            import tempfile
             
             # Парсим multipart/form-data
             content_type = self.headers.get('Content-Type', '')
