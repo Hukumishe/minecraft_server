@@ -3,7 +3,7 @@
 FROM eclipse-temurin:21-jre-alpine
 
 # Устанавливаем необходимые пакеты
-RUN apk add --no-cache curl bash jq
+RUN apk add --no-cache curl bash jq unzip
 
 # Создаем рабочую директорию
 WORKDIR /minecraft
