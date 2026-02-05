@@ -62,6 +62,22 @@ if [ ! -z "$PORT" ]; then
     sed -i "s/server-port=.*/server-port=$PORT/" server.properties
 fi
 
+# Создаем ops.json, если его нет и указаны переменные окружения
+if [ ! -f ops.json ] && [ ! -z "$OPS_UUID" ] && [ ! -z "$OPS_NAME" ]; then
+    echo "Создание ops.json для оператора $OPS_NAME..."
+    cat > ops.json << EOF
+[
+  {
+    "uuid": "$OPS_UUID",
+    "name": "$OPS_NAME",
+    "level": 4,
+    "bypassesPlayerLimit": false
+  }
+]
+EOF
+    echo "ops.json создан!"
+fi
+
 # Запускаем сервер
 echo "Запуск Minecraft сервера с ${MEMORY} памяти..."
 java -Xmx${MEMORY} -Xms${MEMORY} -jar server.jar nogui
