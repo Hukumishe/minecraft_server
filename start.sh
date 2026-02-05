@@ -62,6 +62,56 @@ if [ ! -z "$PORT" ]; then
     sed -i "s/server-port=.*/server-port=$PORT/" server.properties
 fi
 
+# Удаляем мир, если указана переменная DELETE_WORLD
+if [ ! -z "$DELETE_WORLD" ] && [ "$DELETE_WORLD" = "true" ] && [ -d "world" ]; then
+    echo "Удаление мира (DELETE_WORLD=true)..."
+    rm -rf world
+    echo "Мир удален!"
+fi
+
+# Загружаем мир из URL, если указана переменная WORLD_URL и мира нет
+if [ ! -d "world" ] && [ ! -z "$WORLD_URL" ]; then
+    echo "Загрузка мира с $WORLD_URL..."
+    WORLD_ARCHIVE=$(basename "$WORLD_URL")
+    curl -L -o "$WORLD_ARCHIVE" "$WORLD_URL"
+    
+    if [ -f "$WORLD_ARCHIVE" ]; then
+        # Определяем тип архива и распаковываем
+        if [[ "$WORLD_ARCHIVE" == *.zip ]]; then
+            unzip -q "$WORLD_ARCHIVE"
+        elif [[ "$WORLD_ARCHIVE" == *.tar.gz ]] || [[ "$WORLD_ARCHIVE" == *.tgz ]]; then
+            tar -xzf "$WORLD_ARCHIVE"
+        elif [[ "$WORLD_ARCHIVE" == *.tar ]]; then
+            tar -xf "$WORLD_ARCHIVE"
+        fi
+        
+        # Если архив содержит папку world, перемещаем её содержимое
+        if [ -d "world" ]; then
+            echo "Мир успешно загружен!"
+        else
+            # Если архив распаковался в другую папку, ищем папку world
+            if [ -d "$(find . -type d -name 'world' -maxdepth 2 | head -1)" ]; then
+                WORLD_DIR=$(find . -type d -name 'world' -maxdepth 2 | head -1)
+                mv "$WORLD_DIR" ./world
+                echo "Мир успешно загружен!"
+            else
+                echo "Предупреждение: Не удалось найти папку world в архиве"
+            fi
+        fi
+        
+        # Удаляем архив после распаковки
+        rm -f "$WORLD_ARCHIVE"
+    else
+        echo "Ошибка: Не удалось скачать мир с $WORLD_URL"
+    fi
+fi
+
+# Устанавливаем имя мира, если указана переменная WORLD_NAME
+if [ ! -z "$WORLD_NAME" ]; then
+    echo "Установка имени мира: $WORLD_NAME"
+    sed -i "s/level-name=.*/level-name=$WORLD_NAME/" server.properties
+fi
+
 # Создаем ops.json, если его нет и указаны переменные окружения
 if [ ! -f ops.json ]; then
     OPS_COUNT=0
