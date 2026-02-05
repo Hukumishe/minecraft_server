@@ -63,19 +63,89 @@ if [ ! -z "$PORT" ]; then
 fi
 
 # Создаем ops.json, если его нет и указаны переменные окружения
-if [ ! -f ops.json ] && [ ! -z "$OPS_UUID" ] && [ ! -z "$OPS_NAME" ]; then
-    echo "Создание ops.json для оператора $OPS_NAME..."
-    cat > ops.json << EOF
-[
+if [ ! -f ops.json ]; then
+    OPS_COUNT=0
+    OPS_JSON="["
+    
+    # Проверяем первого оператора
+    if [ ! -z "$OPS_UUID" ] && [ ! -z "$OPS_NAME" ]; then
+        OPS_COUNT=$((OPS_COUNT + 1))
+        OPS_JSON="$OPS_JSON
   {
-    "uuid": "$OPS_UUID",
-    "name": "$OPS_NAME",
-    "level": 4,
-    "bypassesPlayerLimit": false
-  }
-]
-EOF
-    echo "ops.json создан!"
+    \"uuid\": \"$OPS_UUID\",
+    \"name\": \"$OPS_NAME\",
+    \"level\": 4,
+    \"bypassesPlayerLimit\": false
+  }"
+    fi
+    
+    # Проверяем второго оператора
+    if [ ! -z "$OPS_UUID_2" ] && [ ! -z "$OPS_NAME_2" ]; then
+        if [ $OPS_COUNT -gt 0 ]; then
+            OPS_JSON="$OPS_JSON,"
+        fi
+        OPS_COUNT=$((OPS_COUNT + 1))
+        OPS_JSON="$OPS_JSON
+  {
+    \"uuid\": \"$OPS_UUID_2\",
+    \"name\": \"$OPS_NAME_2\",
+    \"level\": 4,
+    \"bypassesPlayerLimit\": false
+  }"
+    fi
+    
+    # Проверяем третьего оператора
+    if [ ! -z "$OPS_UUID_3" ] && [ ! -z "$OPS_NAME_3" ]; then
+        if [ $OPS_COUNT -gt 0 ]; then
+            OPS_JSON="$OPS_JSON,"
+        fi
+        OPS_COUNT=$((OPS_COUNT + 1))
+        OPS_JSON="$OPS_JSON
+  {
+    \"uuid\": \"$OPS_UUID_3\",
+    \"name\": \"$OPS_NAME_3\",
+    \"level\": 4,
+    \"bypassesPlayerLimit\": false
+  }"
+    fi
+    
+    # Проверяем четвертого оператора
+    if [ ! -z "$OPS_UUID_4" ] && [ ! -z "$OPS_NAME_4" ]; then
+        if [ $OPS_COUNT -gt 0 ]; then
+            OPS_JSON="$OPS_JSON,"
+        fi
+        OPS_COUNT=$((OPS_COUNT + 1))
+        OPS_JSON="$OPS_JSON
+  {
+    \"uuid\": \"$OPS_UUID_4\",
+    \"name\": \"$OPS_NAME_4\",
+    \"level\": 4,
+    \"bypassesPlayerLimit\": false
+  }"
+    fi
+    
+    # Проверяем пятого оператора
+    if [ ! -z "$OPS_UUID_5" ] && [ ! -z "$OPS_NAME_5" ]; then
+        if [ $OPS_COUNT -gt 0 ]; then
+            OPS_JSON="$OPS_JSON,"
+        fi
+        OPS_COUNT=$((OPS_COUNT + 1))
+        OPS_JSON="$OPS_JSON
+  {
+    \"uuid\": \"$OPS_UUID_5\",
+    \"name\": \"$OPS_NAME_5\",
+    \"level\": 4,
+    \"bypassesPlayerLimit\": false
+  }"
+    fi
+    
+    # Создаем файл, если есть хотя бы один оператор
+    if [ $OPS_COUNT -gt 0 ]; then
+        echo "Создание ops.json для $OPS_COUNT оператора(ов)..."
+        echo "$OPS_JSON
+]" > ops.json
+        echo "ops.json создан с $OPS_COUNT оператором(ами)!"
+    fi
 fi
 
 # Запускаем сервер
